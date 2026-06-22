@@ -1,4 +1,5 @@
 const util = require('../dateUtil');
+const repoErrors = require('./repoErrors');
 
 module.exports = class CommitActivity {
 
@@ -42,18 +43,10 @@ module.exports = class CommitActivity {
       return result;
     })
       .catch(err => {
-        if (err.status === 404) {
-          //TODO could log this out
+        if (repoErrors.isNoActivityError(err)) {
           return {};
-        } else if (err.status === 409) {
-          if (err.message.toLowerCase().startsWith('git repository is empty')) {
-            return {};
-          } else {
-            throw err;
-          }
-        } else {
-          throw err;
         }
+        throw err;
       })
   }
 

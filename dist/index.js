@@ -9640,6 +9640,7 @@ function clearTime(date) {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const util = __webpack_require__(8087);
+const repoErrors = __webpack_require__(169);
 
 module.exports = class CommitActivity {
 
@@ -9683,18 +9684,10 @@ module.exports = class CommitActivity {
       return result;
     })
       .catch(err => {
-        if (err.status === 404) {
-          //TODO could log this out
+        if (repoErrors.isNoActivityError(err)) {
           return {};
-        } else if (err.status === 409) {
-          if (err.message.toLowerCase().startsWith('git repository is empty')) {
-            return {};
-          } else {
-            throw err;
-          }
-        } else {
-          throw err;
         }
+        throw err;
       })
   }
 
@@ -9712,6 +9705,7 @@ module.exports = class CommitActivity {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const util = __webpack_require__(8087);
+const repoErrors = __webpack_require__(169);
 
 module.exports = class IssueActivity {
 
@@ -9753,14 +9747,11 @@ module.exports = class IssueActivity {
       data[repoFullName] = users;
       return data;
     }).catch(err => {
-      if (err.status === 404) {
+      if (repoErrors.isNoActivityError(err)) {
         return {};
-      } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
-        return {};
-      } else {
-        console.error(err)
-        throw err;
       }
+      console.error(err)
+      throw err;
     });
   }
 
@@ -9795,15 +9786,11 @@ module.exports = class IssueActivity {
       data[repoFullName] = users;
       return data;
     }).catch(err => {
-      if (err.status === 404) {
-        //TODO could log this out
+      if (repoErrors.isNoActivityError(err)) {
         return {};
-      } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
-        return {};
-      } else {
-        console.error(err)
-        throw err;
       }
+      console.error(err)
+      throw err;
     })
   }
 
@@ -9864,6 +9851,7 @@ module.exports = class Organization {
 /***/ ((module, __unused_webpack_exports, __webpack_require__) => {
 
 const util = __webpack_require__(8087);
+const repoErrors = __webpack_require__(169);
 
 module.exports = class PullRequestActivity {
 
@@ -9907,15 +9895,11 @@ module.exports = class PullRequestActivity {
       return result;
     })
       .catch(err => {
-        if (err.status === 404) {
-          //TODO could log this out
+        if (repoErrors.isNoActivityError(err)) {
           return {};
-        } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
-          return {};
-        } else {
-          console.error(err)
-          throw err;
         }
+        console.error(err)
+        throw err;
       })
   }
 
@@ -10051,6 +10035,48 @@ module.exports.create = (token, maxRetries) => {
   return octokit;
 }
 
+
+
+/***/ }),
+
+/***/ 169:
+/***/ ((module) => {
+
+// Helpers for recognising repository errors that should be treated as
+// "no activity" rather than aborting the whole organization report.
+
+// An empty repository (no commits) makes the commits/issues/pulls endpoints
+// respond with HTTP 409 "Git Repository is empty.". Depending on how the
+// error propagates through octokit's retry/throttling plugins the numeric
+// status is not always preserved, so match on the message as well.
+function isEmptyRepo(err) {
+  if (!err) {
+    return false;
+  }
+
+  if (err.status === 409) {
+    return true;
+  }
+
+  const message = (err.message || '').toString().toLowerCase();
+  return message.includes('git repository is empty');
+}
+
+// A missing/inaccessible repository responds with 404; treat it as no activity.
+function isMissingRepo(err) {
+  return !!err && err.status === 404;
+}
+
+// True when the error means there is simply nothing to report for the repo.
+function isNoActivityError(err) {
+  return isMissingRepo(err) || isEmptyRepo(err);
+}
+
+module.exports = {
+  isEmptyRepo,
+  isMissingRepo,
+  isNoActivityError,
+};
 
 
 /***/ }),

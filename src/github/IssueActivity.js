@@ -1,4 +1,5 @@
 const util = require('../dateUtil');
+const repoErrors = require('./repoErrors');
 
 module.exports = class IssueActivity {
 
@@ -40,14 +41,11 @@ module.exports = class IssueActivity {
       data[repoFullName] = users;
       return data;
     }).catch(err => {
-      if (err.status === 404) {
+      if (repoErrors.isNoActivityError(err)) {
         return {};
-      } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
-        return {};
-      } else {
-        console.error(err)
-        throw err;
       }
+      console.error(err)
+      throw err;
     });
   }
 
@@ -82,15 +80,11 @@ module.exports = class IssueActivity {
       data[repoFullName] = users;
       return data;
     }).catch(err => {
-      if (err.status === 404) {
-        //TODO could log this out
+      if (repoErrors.isNoActivityError(err)) {
         return {};
-      } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
-        return {};
-      } else {
-        console.error(err)
-        throw err;
       }
+      console.error(err)
+      throw err;
     })
   }
 
