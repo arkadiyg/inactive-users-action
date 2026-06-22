@@ -45,6 +45,8 @@ module.exports = class PullRequestActivity {
         if (err.status === 404) {
           //TODO could log this out
           return {};
+        } else if (err.status === 409 && err.message.toLowerCase().startsWith('git repository is empty')) {
+          return {};
         } else {
           console.error(err)
           throw err;
